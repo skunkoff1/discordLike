@@ -11,7 +11,7 @@
     <?php include('./components/header.php'); ?>
     <div class="form-container">
         <h2>Formulaire d'enregistrement</h2>
-        <form action="../controllers/loginController.php" method="post">
+        <form action="../controllers/registerController.php" method="post">
             <label for="name">Votre nom ou pseudo</label>
             <input type="text" name="name">
             <label for="email">Votre email</label>
@@ -79,7 +79,7 @@
 
         <?php if (isset($_GET['messageSuccess'])) { ?>
         <div class="alert success">
-            <p>Vous êtes maintenant inscrit. <a href="../login.php">Connectez vous</a>.</p>
+            <p>Vous êtes maintenant inscrit. <a href="./login.php">Connectez vous</a>.</p>
         </div>
         <?php } ?>
 

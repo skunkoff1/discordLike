@@ -1,111 +1,69 @@
-<?php
-$message = '';
-$valid = true;
+<?php 
+
 $userName;
-$userPassword;
-$userPassword2;
 $userMail;
-$PASSWORD_REGEX = "/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/";
+$secret;
+$salt;
+$password;
+
+//DEMARRAGE DE LA SESSION
+
+session_start();
 
 require('./connect.php');
 
-if(isset($_POST['name']) && isset($_POST['email']) && isset($_POST['password']) && isset($_POST['password2'])) {
-    $userName = htmlspecialchars($_POST['name']);
+if( isset($_POST['email']) && isset($_POST['password'])) {
     $userMail = htmlspecialchars($_POST['email']);
     $userPassword = htmlspecialchars($_POST['password']);
-    $userPassword2 = htmlspecialchars($_POST['password2']);
-
-    if(strlen($userName)<1) {
-        $valid = false;
-        header('location: ../index.php?error=true&messageName=true');
-        exit();
-    }
-
+    
     if(strlen($userMail)<1) {
-        $valid = false;
-        header('location: ../index.php?error=true&messageEmail=true');
-        exit();
-    }
-
-    //VERIFICATION SI L'EMAIL EXISTE DEJA DANS LA BASE DE DONNEES
-
-    $req = $db->prepare('SELECT COUNT(*) AS x FROM users WHERE email = ?');
-    $req->execute(array($userMail));
-
-    while ($result = $req->fetch()) {
-
-        if ($result['x'] != 0) {
-            $valid = false;
-            header('location: ../index.php?error=true&usedEmail=true');
-            exit();
-        }
-    }
-
-    //VERIFICATION SI LE PSEUDO EXISTE DEJA DANS LA BASE DE DONNEES
-
-    $req = $db->prepare('SELECT COUNT(*) AS x FROM users WHERE username = ?');
-    $req->execute(array($userName));
-
-    while ($result = $req->fetch()) {
-
-        if ($result['x'] != 0) {
-            $valid = false;
-            header('location: ../index.php?error=true&usedName=true');
-            exit();
-        }
-    }
-
-    if(!filter_var($userMail, FILTER_VALIDATE_EMAIL)) {
-        $valid = false;
-        header('location: ../index.php?error=true&messageInvalidEmail=true');
+        header('location: ../views/login.php?error=true&messageEmail=true');
         exit();
     }
 
     if(strlen($userPassword)<1) {
-        $valid = false;
-        header('location: ../index.php?error=true&messagePassword=true');
+        header('location: ../views/login.php?error=true&messagePassword=true');
         exit();
     }
-    
-    if(preg_match($PASSWORD_REGEX, $userPassword)==0) {
-        $valid = false;
-        header('location: ../index.php?error=true&messageInvalidPassword=true');
-        exit();
-    }
+     // VERIFICATION SI USER EXISTE DANS BDD
 
-    if(strlen($userPassword2)<1) {
-        $valid = false;
-        header('location: ../index.php?error=true&messagePassword2=true');
-        exit();
-    }
+     $req = $db->prepare('SELECT COUNT(*) AS x FROM users WHERE email = ? OR username = ?');
+     $req->execute(array($userMail, $userMail));
+ 
 
-    if($userPassword != $userPassword2) {
-        $valid = false;
-        header('location: ../index.php?&error=true&messageNotEqualsPassword=true');
-        exit();
-    }
+     while ($user = $req->fetch()) {
+ 
+         if ($user['x'] != 1) {
+             header('location: ../views/login.php?error=true&messageUser=true');
+             exit();
+         }
+     }
 
+      //VERIFICATION CORRESPONDANCE MDP ET EMAIL USER
 
+    $donnees = $db->prepare('SELECT email, username, secret, password, salt FROM users WHERE email = ? OR username = ?');
+    $donnees->execute(array($userMail, $userMail));
 
-    if($valid) {
-        
-         //SI OK, CHIFFRAGE DU MOT DE PASSE
+    while ($user = $donnees->fetch()) {
 
-        $salt = time() . sha1($userMail);
-        $password = $salt . sha1($userPassword . "123") . "25";
+        $compare = $user['salt'] . sha1($userPassword . "123") . "25";
 
+        if ($compare == $user['password']) {
 
-        // SI OK, CREATION DU SECRET (correspond à l'id du cookie)
+            $_SESSION['connect'] = true;
+            $_SESSION['email'] = $user['email'];
+            $_SESSION['pseudo'] = $user['username'];
 
-        $secret = sha1($userMail) . time();
-        $secret = sha1($secret) . time();
+            // if (isset($_POST['auto'])) {
 
-        $req = $db->prepare('INSERT INTO users(username, email, secret, password, salt) VALUES (?,?,?,?,?)');
-        $req->execute(array($userName, $userMail, $secret, $password, $salt));
+            //     setcookie('auth', $user['secret'], time() + 364 * 24 * 3600, "/", null, false, true);
+            // }
 
-        header('location: ../index.php?messageSuccess=true');
-    }
-    
-
-    
+            header('location: ./homeController.php');
+            exit();
+        } else {
+            header('location: ../views/login.php?error=true&messagePassword2=true');
+            exit();
+        }
+    }     
 }
